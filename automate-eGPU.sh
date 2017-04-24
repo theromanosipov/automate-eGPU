@@ -59,7 +59,7 @@ amd=0
 amd_x4000_codenames=(Bonaire Hawaii Pitcairn Tahiti Tonga Verde)
 amd_x4100_codenames=(Baffin)
 amd_x3000_codenames=(Barts Caicos Cayman Cedar Cypress Juniper Lombok Redwood Turks)
-amd_controllers=(5000 6000 7000 8000 9000 9500)
+amd_controllers=(5000 6000 7000 8000 9000 9510)
 config_board_ids=(42FD25EABCABB274 65CE76090165799A B809C3757DA9BB8D DB15BD556843C820 F60DEB81FF30ACF6 FA842E06C61E91C5)
 board_id=$(ioreg -c IOPlatformExpertDevice -d 2 | grep board-id | $SED "s/.*<\"\(.*\)\">.*/\1/")
 skipagdc=0
@@ -161,8 +161,8 @@ function IOPCITunnelCompatibleCheck()
 	then
 		for controller in "${amd_controllers[@]}"
 		do
-			if [[ $(($major_version)) -eq 10 && $(($minor_version)) -eq 9 && "$controller" != "8000" && "$controller" != "9000" && "$controller" != "9500" ]] \
-			|| [[ $(($major_version)) -eq 10 && $(($minor_version)) -lt 12 && "$controller" != "9500" ]] || [[ $(($major_version)) -eq 10 && $(($minor_version)) -gt 11 ]]
+			if [[ $(($major_version)) -eq 10 && $(($minor_version)) -eq 9 && "$controller" != "8000" && "$controller" != "9000" && "$controller" != "9510" ]] \
+			|| [[ $(($major_version)) -eq 10 && $(($minor_version)) -lt 12 && "$controller" != "9510" ]] || [[ $(($major_version)) -eq 10 && $(($minor_version)) -gt 11 ]]
 			then
    				[[ $(/usr/libexec/PlistBuddy -c "Print :IOKitPersonalities:Controller:IOPCITunnelCompatible" /System/Library/Extensions/AMD"$controller"Controller.kext/Contents/Info.plist 2>/dev/null) == "true" ]] && valid_count=$(($valid_count+1))
 			fi
@@ -377,7 +377,7 @@ function SetIOPCITunnelCompatible()
 			then
 				controller_found=1
 				break
-			elif [[ "$controller" == "9500" ]] && [[ "$egpu_names" =~ Baffin|Ellesmere ]]
+			elif [[ "$controller" == "9510" ]] && [[ "$egpu_names" =~ Baffin|Ellesmere ]]
 			then
 				controller_found=1
 			fi		
@@ -424,6 +424,19 @@ function SetIOPCITunnelCompatible()
 			fi
 		done
 		
+		for codename in "${amd_x3000_codenames[@]}"
+		do
+			if [[ "$egpu_names" =~ "$codename" ]]
+			then
+				match_plist="/System/Library/Extensions/AMDRadeonX3000.kext/Contents/Info.plist"
+				/usr/libexec/PlistBuddy -c "Add :IOKitPersonalities:AMD"$codename"GraphicsAccelerator:IOPCITunnelCompatible bool true" "$match_plist" 2>/dev/null
+	
+				match_entry="IOKitPersonalities:AMD"$codename"GraphicsAccelerator:IOPCIMatch"
+				SetIOPCIMatch
+				accelerator_found=1
+				break
+			fi
+		done
 		
 		if [[ $accelerator_found == 0 ]]
 		then
